@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Task</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   CSS VARIABLES — Dark theme (default)
+   ============================================ */
+:root {
+  --bg-deep: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-card-hover: #1a1a26;
+  --border: #1e1e2e;
+  --accent: #00d4aa;
+  --accent-glow: rgba(0, 212, 170, 0.15);
+  --accent-dim: rgba(0, 212, 170, 0.6);
+  --warm: #ff6b6b;
+  --warm-glow: rgba(255, 107, 107, 0.15);
+  --amber: #f5a623;
+  --amber-glow: rgba(245, 166, 35, 0.12);
+  --text: #e8e8ef;
+  --text-dim: #6b6b80;
+  --text-mid: #9595aa;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+/* ============================================
+   LIGHT THEME — Applied when body has .light
+   ============================================ */
+body.light {
+  --bg-deep: #f0f0f5;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f5fa;
+  --border: #e0e0ea;
+  --accent: #00b894;
+  --accent-glow: rgba(0, 184, 148, 0.12);
+  --accent-dim: rgba(0, 184, 148, 0.5);
+  --warm: #e55050;
+  --warm-glow: rgba(229, 80, 80, 0.12);
+  --amber: #e09400;
+  --amber-glow: rgba(224, 148, 0, 0.1);
+  --text: #1a1a2e;
+  --text-dim: #8888a0;
+  --text-mid: #5a5a72;
+}
+
+/* ============================================
+   RESET & BASE
+   ============================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.5px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #ff4757, #ff6b81);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.settings-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+}
+.settings-btn:hover { background: var(--bg-card-hover); color: var(--text); }
+
+/* ============================================
+   DASHBOARD GRID
+   ============================================ */
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, background 0.3s;
+}
+.card:hover { border-color: #2a2a3e; }
+body.light .card:hover { border-color: #c8c8d8; }
+
+.card-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+/* ============================================
+   1. TIMER CARD
+   ============================================ */
+.timer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 340px;
+}
+
+.timer-card::before {
+  content: '';
+  position: absolute;
+  top: -60%; left: -20%;
+  width: 140%; height: 140%;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s;
+}
+.timer-card.running::before { opacity: 1; }
+.timer-card.break-mode::before {
+  background: radial-gradient(circle, var(--warm-glow) 0%, transparent 60%);
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(128,128,128,0.08);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 32px;
+}
+
+.mode-tab {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-tab.active { background: var(--accent); color: #0a0a0f; font-weight: 700; }
+.mode-tab.active.break-active { background: var(--warm); }
+.mode-tab:not(.active):hover { color: var(--text); }
+
+.timer-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 5.5rem;
+  font-weight: 800;
+  letter-spacing: -3px;
+  line-height: 1;
+  margin-bottom: 32px;
+}
+
+.timer-display .colon { color: var(--accent-dim); animation: none; }
+.timer-card.running .colon { animation: blink 1s step-end infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+.timer-controls { display: flex; gap: 12px; align-items: center; }
+
+.btn-start {
+  padding: 14px 48px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #0a0a0f;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.btn-start:hover { transform: translateY(-1px); box-shadow: 0 8px 24px var(--accent-glow); }
+.btn-start.pause { background: var(--warm); }
+.btn-start.pause:hover { box-shadow: 0 8px 24px var(--warm-glow); }
+
+/* Finish button — marks focused task as done */
+.btn-finish {
+  padding: 14px 28px;
+  border-radius: 12px;
+  border: 1px solid var(--amber);
+  background: var(--amber-glow);
+  color: var(--amber);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  display: none;
+}
+.btn-finish.visible { display: block; }
+.btn-finish:hover { background: var(--amber); color: #0a0a0f; transform: translateY(-1px); }
+
+.btn-reset {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.btn-reset.visible { display: flex; }
+.btn-reset:hover { border-color: var(--warm); color: var(--warm); }
+
+.btn-stop-alarm {
+  padding: 14px 48px;
+  border-radius: 12px;
+  border: 2px solid var(--warm);
+  background: var(--warm-glow);
+  color: var(--warm);
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  animation: pulse-alarm 0.8s ease-in-out infinite;
+  display: none;
+}
+.btn-stop-alarm.visible { display: block; }
+@keyframes pulse-alarm {
+  0%, 100% { box-shadow: 0 0 0 0 var(--warm-glow); }
+  50% { box-shadow: 0 0 20px 8px var(--warm-glow); }
+}
+
+.current-task-label {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.current-task-label span { color: var(--accent); font-style: normal; font-weight: 600; }
+
+/* ============================================
+   2. TASK CARD
+   ============================================ */
+.task-card { min-height: 340px; display: flex; flex-direction: column; }
+
+.task-input-row { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.task-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(128,128,128,0.05);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.task-input:focus { border-color: var(--accent); }
+.task-input::placeholder { color: var(--text-dim); }
+
+.btn-add-task {
+  padding: 12px 18px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: #0a0a0f;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-add-task:hover { transform: translateY(-1px); }
+
+.task-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(128,128,128,0.03);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.task-item:hover { background: rgba(128,128,128,0.06); border-color: var(--border); }
+.task-item.active { border-color: var(--accent); background: var(--accent-glow); }
+.task-item.done { opacity: 0.4; }
+.task-item.done .task-name { text-decoration: line-through; }
+
+.task-check {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 2px solid var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+.task-item.done .task-check { background: var(--accent); border-color: var(--accent); color: #0a0a0f; }
+
+.task-name { flex: 1; font-size: 0.9rem; }
+
+.task-pomos {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  background: rgba(128,128,128,0.06);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.task-delete {
+  opacity: 0;
+  border: none;
+  background: none;
+  color: var(--warm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+.task-item:hover .task-delete { opacity: 0.6; }
+.task-delete:hover { opacity: 1 !important; }
+
+.task-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 40px 0;
+  font-style: italic;
+}
+
+/* Archive row — toggle + download button side by side */
+.archive-row {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.archive-row.visible { display: flex; }
+
+.archive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.archive-toggle:hover { color: var(--text-mid); }
+.archive-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+.archive-toggle .arrow.open { transform: rotate(90deg); }
+
+.btn-download {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-download:hover { color: var(--accent); border-color: var(--accent); }
+
+.archive-list {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.archive-list.open { display: flex; }
+
+/* ============================================
+   3. STATS CARD
+   ============================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  background: rgba(128,128,128,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+}
+
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.stat-value.accent { color: var(--accent); }
+.stat-value.warm { color: var(--warm); }
+.stat-value.amber { color: var(--amber); }
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 6px;
+}
+
+.progress-section-title {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.daily-bar-container { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+
+.daily-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.daily-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent);
+  opacity: 0.7;
+  min-height: 4px;
+  transition: height 0.5s ease;
+}
+.daily-bar.today { opacity: 1; box-shadow: 0 0 12px var(--accent-glow); }
+
+.daily-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ============================================
+   4. REPORTS CARD
+   ============================================ */
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.report-tabs { display: flex; gap: 4px; }
+
+.report-controls { display: flex; gap: 8px; align-items: center; }
+
+.report-sort {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-deep);
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  outline: none;
+  cursor: pointer;
+}
+.report-sort:focus { border-color: var(--accent); }
+
+.btn-report-export {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-report-export:hover { color: var(--accent); border-color: var(--accent); }
+
+.report-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.report-tab.active {
+  background: rgba(128,128,128,0.08);
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.report-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.report-row {
+  padding: 10px 14px;
+  background: rgba(128,128,128,0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.report-row-label { font-size: 0.85rem; color: var(--text-mid); }
+.report-row-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 0.9rem; }
+
+.report-row-bar {
+  height: 4px; border-radius: 2px; margin-top: 6px;
+  background: var(--border); overflow: hidden;
+}
+.report-row-fill {
+  height: 100%; border-radius: 2px;
+  background: var(--accent); transition: width 0.5s ease;
+}
+
+.report-empty {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 40px 0;
+  font-style: italic;
+}
+
+/* ============================================
+   SETTINGS MODAL
+   ============================================ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-overlay.visible { display: flex; }
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 400px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 28px 0;
+}
+.modal-header h2 { font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+
+.modal-close {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { color: var(--warm); border-color: var(--warm); }
+
+.modal-body { padding: 24px 28px; }
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.setting-row:last-child { border-bottom: none; }
+
+.setting-label { font-size: 0.9rem; color: var(--text-mid); }
+
+.setting-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-deep);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+.setting-select:focus { border-color: var(--accent); }
+
+/* Theme toggle switch */
+.toggle-switch {
+  width: 48px; height: 26px;
+  border-radius: 13px;
+  border: none;
+  background: var(--border);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.toggle-switch.on { background: var(--accent); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 0.3s;
+}
+.toggle-switch.on::after { transform: translateX(22px); }
+body.light .toggle-switch::after { background: white; }
+
+.sound-row { display: flex; gap: 8px; align-items: center; }
+
+.btn-preview {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-preview:hover { color: var(--accent); border-color: var(--accent); }
+
+.modal-footer { padding: 0 28px 24px; }
+
+.btn-save {
+  width: 100%; padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #0a0a0f;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-save:hover { transform: translateY(-1px); box-shadow: 0 8px 24px var(--accent-glow); }
+
+.danger-section { margin-top: 8px; padding-top: 16px; border-top: 1px solid rgba(255,107,107,0.2); }
+.btn-danger {
+  width: 100%; padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,107,107,0.3);
+  background: rgba(255,107,107,0.08);
+  color: var(--warm);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-danger:hover { background: rgba(255,107,107,0.15); border-color: var(--warm); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Responsive */
+@media (max-width: 800px) {
+  .dashboard { grid-template-columns: 1fr; padding: 16px; }
+  .timer-display { font-size: 3.5rem; }
+  .header { padding: 16px; }
+  .mode-tab { padding: 6px 14px; font-size: 0.8rem; }
+  .btn-start { padding: 14px 32px; }
+  .btn-finish { padding: 12px 18px; font-size: 0.8rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🍅</div>
+    Pomodoro Task
+  </div>
+  <button class="settings-btn" onclick="openSettings()" title="Settings">⚙</button>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard">
+
+  <!-- 1. TIMER -->
+  <div class="card timer-card" id="timerCard">
+    <div class="card-label">Focus Timer</div>
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="work" onclick="setMode('work')">Work</button>
+      <button class="mode-tab" data-mode="short" onclick="setMode('short')">Short Break</button>
+      <button class="mode-tab" data-mode="long" onclick="setMode('long')">Long Break</button>
+    </div>
+    <div class="timer-display">
+      <span id="minutes">35</span><span class="colon">:</span><span id="seconds">00</span>
+    </div>
+    <div class="timer-controls" id="timerControls">
+      <button class="btn-reset" id="resetBtn" onclick="resetTimer()">↺</button>
+      <button class="btn-start" id="startBtn" onclick="toggleTimer()">Start</button>
+      <button class="btn-finish" id="finishBtn" onclick="finishTask()">✓ Finish</button>
+    </div>
+    <button class="btn-stop-alarm" id="stopAlarmBtn" onclick="stopAlarm()">Stop Alarm</button>
+    <div class="current-task-label" id="currentTaskLabel">Click a task to focus on it →</div>
+  </div>
+
+  <!-- 2. TASKS -->
+  <div class="card task-card">
+    <div class="card-label">Tasks</div>
+    <div class="task-input-row">
+      <input type="text" class="task-input" id="taskInput"
+             placeholder="What are you working on?" maxlength="100"
+             onkeydown="if(event.key==='Enter')addTask()">
+      <button class="btn-add-task" onclick="addTask()">+</button>
+    </div>
+    <div class="task-list" id="taskList">
+      <div class="task-empty">No tasks yet. Add one above!</div>
+    </div>
+    <!-- Completed tasks archive — collapsible with download -->
+    <div class="archive-row" id="archiveRow">
+      <button class="archive-toggle" onclick="toggleArchive()">
+        <span class="arrow" id="archiveArrow">▶</span>
+        <span id="archiveLabel">Completed (0)</span>
+      </button>
+      <button class="btn-download" onclick="downloadCompleted()" title="Download completed tasks as text">
+        ↓ Export
+      </button>
+    </div>
+    <div class="archive-list" id="archiveList"></div>
+  </div>
+
+  <!-- 3. STATS -->
+  <div class="card stats-card">
+    <div class="card-label">Today's Progress</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-value accent" id="statPomos">0</div>
+        <div class="stat-label">Pomodoros</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value warm" id="statTime">0m</div>
+        <div class="stat-label">Focus Time</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value amber" id="statTasks">0</div>
+        <div class="stat-label">Tasks Done</div>
+      </div>
+    </div>
+    <div class="progress-section-title">This Week</div>
+    <div class="daily-bar-container" id="weekBars"></div>
+  </div>
+
+  <!-- 4. REPORTS -->
+  <div class="card reports-card">
+    <div class="card-label">Reports</div>
+    <div class="report-header">
+      <div class="report-tabs">
+        <button class="report-tab active" data-report="weekly" onclick="setReportTab('weekly')">Weekly</button>
+        <button class="report-tab" data-report="monthly" onclick="setReportTab('monthly')">Monthly</button>
+      </div>
+      <div class="report-controls">
+        <select class="report-sort" id="reportSort" onchange="renderReports()" title="Sort by">
+          <option value="time-desc">Most time ↓</option>
+          <option value="time-asc">Least time ↑</option>
+          <option value="name-asc">A → Z</option>
+          <option value="date-desc">Most recent</option>
+        </select>
+        <button class="btn-report-export" onclick="downloadReport()" title="Export report as text">↓ Export</button>
+      </div>
+    </div>
+    <div class="report-summary" id="reportSummary">
+      <div class="report-empty">Complete some sessions to see reports</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙ Settings</h2>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Theme toggle -->
+      <div class="setting-row">
+        <span class="setting-label">Light Theme</span>
+        <button class="toggle-switch" id="themeToggle" onclick="toggleTheme()"></button>
+      </div>
+      <!-- Durations: all 5, 10, 15 ... 60 -->
+      <div class="setting-row">
+        <span class="setting-label">Work Duration</span>
+        <select class="setting-select" id="setWork"></select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Short Break</span>
+        <select class="setting-select" id="setShort"></select>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Long Break</span>
+        <select class="setting-select" id="setLong"></select>
+      </div>
+      <!-- Alarm sound -->
+      <div class="setting-row">
+        <span class="setting-label">Alarm Sound</span>
+        <div class="sound-row">
+          <select class="setting-select" id="setAlarm">
+            <option value="default">Default (Beep)</option>
+            <option value="digital">Digital Alarm</option>
+            <option value="lofi">Lo-Fi Alarm</option>
+            <option value="oversimplified">Oversimplified</option>
+            <option value="generic">Generic Alarm</option>
+            <option value="short">Short Alarm</option>
+            <option value="classic">Classic Alarm</option>
+            <option value="ticking">Ticking Clock</option>
+            <option value="twelve">Twelve O'Clock</option>
+          </select>
+          <button class="btn-preview" onclick="previewSound()" title="Preview">🔊</button>
+        </div>
+      </div>
+      <div class="danger-section">
+        <button class="btn-danger" onclick="clearAllData()">🗑 Clear All Data</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// ALARM SOUNDS
+// ============================================
+const ALARM_SOUNDS = {
+  'default':        null,
+  'digital':        'sounds/universfield-digital-alarm-clock-151920.mp3',
+  'lofi':           'sounds/lesiakower-lo-fi-alarm-clock-243766.mp3',
+  'oversimplified': 'sounds/lesiakower-oversimplified-alarm-clock-113180.mp3',
+  'generic':        'sounds/freesound_community-generic-alarm-clock-86759.mp3',
+  'short':          'sounds/freesound_community-alarm-clock-short-6402.mp3',
+  'classic':        'sounds/freesound_community-alarm-clock-90867.mp3',
+  'ticking':        'sounds/alban_gogh-ticking-and-ringing-of-an-old-spring-alarm-clock-sound-effect-338285.mp3',
+  'twelve':         'sounds/juliush-the-clock-strickes-twelve-o-clock-nature-sounds-7806.mp3'
+};
+
+// ============================================
+// STATE
+// ============================================
+let durations      = { work: 35, short: 5, long: 15 };
+let currentMode    = 'work';
+let timeLeft       = durations.work * 60;
+let isRunning      = false;
+let interval       = null;
+let activeTaskId   = null;
+let alarmSound     = 'default';
+let alarmAudio     = null;
+let isAlarmRinging = false;
+let theme          = 'dark';
+let taskStartedAt  = null; // Tracks when current task started (for accurate time on switch)
+let tasks          = [];
+let nextId         = 1;
+let sessions       = [];
+
+// ============================================
+// INIT
+// ============================================
+function init() {
+  loadData();
+  applyTheme();
+  populateSettingsForm();
+  updateDisplay();
+  renderTasks();
+  updateStats();
+  renderWeekBars();
+  renderReports();
+  updateCurrentTaskLabel();
+  updateFinishButton();
+}
+
+// ============================================
+// STORAGE
+// ============================================
+function saveData() {
+  localStorage.setItem('pomodoro_data', JSON.stringify({
+    durations, tasks, nextId, sessions, alarmSound, activeTaskId, theme
+  }));
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem('pomodoro_data');
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    if (d.durations)  { durations = d.durations; timeLeft = durations[currentMode] * 60; }
+    if (d.tasks)      tasks = d.tasks;
+    if (d.nextId)     nextId = d.nextId;
+    if (d.sessions)   sessions = d.sessions;
+    if (d.alarmSound) alarmSound = d.alarmSound;
+    if (d.theme)      theme = d.theme;
+    if (d.activeTaskId) {
+      const t = tasks.find(t => t.id === d.activeTaskId && !t.done);
+      if (t) activeTaskId = d.activeTaskId;
+    }
+  } catch (e) { console.warn('Load failed:', e); }
+}
+
+// ============================================
+// THEME
+// ============================================
+function applyTheme() {
+  document.body.classList.toggle('light', theme === 'light');
+  document.getElementById('themeToggle').classList.toggle('on', theme === 'light');
+}
+
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+  saveData();
+}
+
+// ============================================
+// TIMER
+// ============================================
+function updateDisplay() {
+  const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+  document.getElementById('minutes').textContent = String(m).padStart(2, '0');
+  document.getElementById('seconds').textContent = String(s).padStart(2, '0');
+  updatePageTitle();
+}
+
+function updatePageTitle() {
+  if (!isRunning) { document.title = 'Pomodoro Task'; return; }
+  const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+  document.title = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} ${currentMode === 'work' ? '🍅' : '☕'} Pomodoro Task`;
+}
+
+function toggleTimer() {
+  if (isRunning) {
+    clearInterval(interval);
+    isRunning = false;
+    document.getElementById('startBtn').textContent = 'Resume';
+    document.getElementById('startBtn').classList.remove('pause');
+    document.getElementById('timerCard').classList.remove('running');
+  } else {
+    isRunning = true;
+    taskStartedAt = Date.now(); // Track when this task segment started
+    document.getElementById('startBtn').textContent = 'Pause';
+    document.getElementById('startBtn').classList.add('pause');
+    document.getElementById('resetBtn').classList.add('visible');
+    document.getElementById('timerCard').classList.add('running');
+    interval = setInterval(() => {
+      timeLeft--;
+      if (timeLeft <= 0) {
+        clearInterval(interval);
+        isRunning = false;
+        logSession();
+        playAlarm();
+        timeLeft = durations[currentMode] * 60;
+        document.getElementById('startBtn').textContent = 'Start';
+        document.getElementById('startBtn').classList.remove('pause');
+        document.getElementById('timerCard').classList.remove('running');
+        updateFinishButton();
+        updateStats(); renderWeekBars(); renderTasks(); renderReports();
+        saveData();
+      }
+      updateDisplay();
+    }, 1000);
+  }
+  updatePageTitle();
+  updateFinishButton();
+}
+
+function resetTimer() {
+  clearInterval(interval);
+  isRunning = false;
+  taskStartedAt = null;
+  timeLeft = durations[currentMode] * 60;
+  updateDisplay();
+  document.getElementById('startBtn').textContent = 'Start';
+  document.getElementById('startBtn').classList.remove('pause');
+  document.getElementById('resetBtn').classList.remove('visible');
+  document.getElementById('timerCard').classList.remove('running');
+  updateFinishButton();
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active', 'break-active'));
+  const tab = document.querySelector(`[data-mode="${mode}"]`);
+  tab.classList.add('active');
+  if (mode !== 'work') tab.classList.add('break-active');
+  document.getElementById('timerCard').classList.toggle('break-mode', mode !== 'work');
+  resetTimer();
+}
+
+function logSession() {
+  const now = new Date();
+  let taskName = 'No task';
+  if (activeTaskId) {
+    const task = tasks.find(t => t.id === activeTaskId);
+    if (task) { taskName = task.name; if (currentMode === 'work') task.pomos++; }
+  }
+  sessions.push({
+    date: now.toISOString().split('T')[0],
+    taskName, minutes: durations[currentMode],
+    mode: currentMode, timestamp: now.toISOString()
+  });
+}
+
+// ============================================
+// FINISH BUTTON — Completes task + archives it
+// ============================================
+
+/** Show only when timer is active + work mode + task is selected */
+function updateFinishButton() {
+  const timerActive = document.getElementById('resetBtn').classList.contains('visible');
+  const show = timerActive && currentMode === 'work' && activeTaskId !== null;
+  document.getElementById('finishBtn').classList.toggle('visible', show);
+}
+
+/** Finish: log partial session, mark task done, stop timer */
+/** Finish current task. If keepTimer=true, timer keeps running (for task switching) */
+function finishTask(keepTimer) {
+  if (!activeTaskId) return;
+  const task = tasks.find(t => t.id === activeTaskId);
+  if (!task) return;
+
+  // Calculate actual minutes this task was worked on
+  let minutesWorked = 1;
+  if (taskStartedAt) {
+    minutesWorked = Math.max(1, Math.round((Date.now() - taskStartedAt) / 60000));
+  }
+
+  // Log the work session
+  const now = new Date();
+  sessions.push({
+    date: now.toISOString().split('T')[0],
+    taskName: task.name, minutes: minutesWorked,
+    mode: 'work', timestamp: now.toISOString()
+  });
+
+  // Archive the task
+  task.done = true;
+  task.completedAt = now.toISOString();
+  if (currentMode === 'work') task.pomos++;
+
+  // Deselect task
+  activeTaskId = null;
+  taskStartedAt = null;
+  updateCurrentTaskLabel();
+
+  if (!keepTimer) {
+    // Full finish — reset the timer
+    resetTimer();
+  }
+
+  renderTasks(); updateStats(); renderWeekBars(); renderReports();
+  saveData();
+}
+
+// ============================================
+// ALARM
+// ============================================
+function playAlarm() {
+  isAlarmRinging = true;
+  document.getElementById('stopAlarmBtn').classList.add('visible');
+  document.getElementById('timerControls').style.display = 'none';
+  if (alarmSound === 'default') { playDefaultBeep(); }
+  else {
+    const path = ALARM_SOUNDS[alarmSound];
+    if (path) {
+      alarmAudio = new Audio(path);
+      alarmAudio.loop = true;
+      alarmAudio.play().catch(() => playDefaultBeep());
+    }
+  }
+}
+
+function playDefaultBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep(t) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 800; g.gain.value = 0.3;
+      o.start(t); o.stop(t + 0.15);
+    }
+    const now = ctx.currentTime;
+    for (let i = 0; i < 3; i++) beep(now + i * 0.25);
+    alarmAudio = { _ctx: ctx, _isBeep: true };
+    alarmAudio._interval = setInterval(() => {
+      if (!isAlarmRinging) { clearInterval(alarmAudio._interval); return; }
+      try { const t = ctx.currentTime; for (let i = 0; i < 3; i++) beep(t + i * 0.25); }
+      catch(e) { clearInterval(alarmAudio._interval); }
+    }, 2000);
+  } catch (e) {}
+}
+
+function stopAlarm() {
+  isAlarmRinging = false;
+  if (alarmAudio) {
+    if (alarmAudio._isBeep) {
+      clearInterval(alarmAudio._interval);
+      if (alarmAudio._ctx) alarmAudio._ctx.close().catch(() => {});
+    } else { alarmAudio.pause(); alarmAudio.currentTime = 0; }
+    alarmAudio = null;
+  }
+  document.getElementById('stopAlarmBtn').classList.remove('visible');
+  document.getElementById('timerControls').style.display = 'flex';
+  document.getElementById('resetBtn').classList.remove('visible');
+  updateFinishButton();
+}
+
+function previewSound() {
+  if (alarmAudio && !isAlarmRinging) {
+    if (alarmAudio._isBeep) clearInterval(alarmAudio._interval);
+    else { alarmAudio.pause(); alarmAudio.currentTime = 0; }
+    alarmAudio = null;
+  }
+  const sel = document.getElementById('setAlarm').value;
+  if (sel === 'default') {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 800; g.gain.value = 0.3;
+      o.start(); o.stop(ctx.currentTime + 0.5);
+    } catch (e) {}
+  } else {
+    const path = ALARM_SOUNDS[sel];
+    if (path) {
+      alarmAudio = new Audio(path);
+      alarmAudio.play().catch(() => {});
+      setTimeout(() => { if (alarmAudio) { alarmAudio.pause(); alarmAudio.currentTime = 0; alarmAudio = null; } }, 4000);
+    }
+  }
+}
+
+// ============================================
+// TASKS
+// ============================================
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const name = input.value.trim();
+  if (!name) return;
+  tasks.unshift({ id: nextId++, name, pomos: 0, done: false, createdAt: new Date().toISOString() });
+  input.value = '';
+  renderTasks(); saveData();
+}
+
+function toggleTaskDone(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  task.done = !task.done;
+  if (task.done) {
+    task.completedAt = new Date().toISOString();
+    if (activeTaskId === id) { activeTaskId = null; updateCurrentTaskLabel(); updateFinishButton(); }
+  } else { delete task.completedAt; }
+  updateStats(); renderTasks(); saveData();
+}
+
+function setActiveTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (task && task.done) return; // Can't focus completed task
+
+  // Toggle off: clicking same task deselects it
+  if (activeTaskId === id) {
+    activeTaskId = null;
+    renderTasks(); updateCurrentTaskLabel(); updateFinishButton(); saveData();
+    return;
+  }
+
+  // Switching tasks while timer is running → auto-complete the current task
+  if (activeTaskId && isRunning && currentMode === 'work') {
+    finishTask(true); // true = keep timer running
+  }
+
+  // Set new active task
+  activeTaskId = id;
+  taskStartedAt = isRunning ? Date.now() : null; // Start tracking if timer is running
+  renderTasks(); updateCurrentTaskLabel(); updateFinishButton(); saveData();
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  if (activeTaskId === id) { activeTaskId = null; updateCurrentTaskLabel(); updateFinishButton(); }
+  renderTasks(); updateStats(); saveData();
+}
+
+function updateCurrentTaskLabel() {
+  const label = document.getElementById('currentTaskLabel');
+  if (activeTaskId) {
+    const task = tasks.find(t => t.id === activeTaskId);
+    if (task) label.innerHTML = `Focusing on: <span>${escapeHtml(task.name)}</span>`;
+    else label.innerHTML = 'Click a task to focus on it →';
+  } else { label.innerHTML = 'Click a task to focus on it →'; }
+}
+
+function renderTasks() {
+  const list = document.getElementById('taskList');
+  const active = tasks.filter(t => !t.done);
+  const done = tasks.filter(t => t.done);
+
+  // Active tasks
+  if (active.length === 0) {
+    list.innerHTML = '<div class="task-empty">No tasks yet. Add one above!</div>';
+  } else {
+    list.innerHTML = active.map(t => taskHTML(t)).join('');
+  }
+
+  // Archive section
+  const archRow = document.getElementById('archiveRow');
+  const archList = document.getElementById('archiveList');
+  if (done.length > 0) {
+    archRow.classList.add('visible');
+    document.getElementById('archiveLabel').textContent = `Completed (${done.length})`;
+    const sorted = [...done].sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+    archList.innerHTML = sorted.map(t => taskHTML(t)).join('');
+  } else {
+    archRow.classList.remove('visible');
+    archList.innerHTML = '';
+    archList.classList.remove('open');
+  }
+}
+
+function taskHTML(t) {
+  return `<div class="task-item ${t.done ? 'done' : ''} ${activeTaskId === t.id ? 'active' : ''}"
+    onclick="setActiveTask(${t.id})">
+    <div class="task-check" onclick="event.stopPropagation(); toggleTaskDone(${t.id})">${t.done ? '✓' : ''}</div>
+    <div class="task-name">${escapeHtml(t.name)}</div>
+    ${t.pomos > 0 ? `<div class="task-pomos">🍅 ${t.pomos}</div>` : ''}
+    <button class="task-delete" onclick="event.stopPropagation(); deleteTask(${t.id})">✕</button>
+  </div>`;
+}
+
+function toggleArchive() {
+  document.getElementById('archiveList').classList.toggle('open');
+  document.getElementById('archiveArrow').classList.toggle('open');
+}
+
+/** Download completed tasks as a .txt file for AI summarization */
+function downloadCompleted() {
+  const done = tasks.filter(t => t.done);
+  if (done.length === 0) return;
+
+  // Sort by completion date, most recent first
+  const sorted = [...done].sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || ''));
+
+  // Build a clean text format that's easy for Claude/GPT to parse
+  let text = `COMPLETED TASKS — Exported ${new Date().toLocaleDateString('en-GB')}\n`;
+  text += `${'='.repeat(50)}\n\n`;
+
+  sorted.forEach((t, i) => {
+    const completedDate = t.completedAt
+      ? new Date(t.completedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'Unknown date';
+
+    // Find total minutes spent on this task from sessions
+    const taskSessions = sessions.filter(s => s.taskName === t.name && s.mode === 'work');
+    const totalMin = taskSessions.reduce((sum, s) => sum + s.minutes, 0);
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    const timeStr = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+
+    text += `${i + 1}. ${t.name}\n`;
+    text += `   Completed: ${completedDate}\n`;
+    text += `   Pomodoros: ${t.pomos} | Time spent: ${timeStr}\n\n`;
+  });
+
+  text += `${'='.repeat(50)}\n`;
+  text += `Total tasks: ${sorted.length}\n`;
+
+  const totalAllMin = sessions.filter(s => s.mode === 'work' && sorted.some(t => t.name === s.taskName))
+    .reduce((sum, s) => sum + s.minutes, 0);
+  const th = Math.floor(totalAllMin / 60), tm = totalAllMin % 60;
+  text += `Total focus time: ${th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`}\n`;
+
+  // Create and trigger download
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `completed-tasks-${new Date().toISOString().split('T')[0]}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================
+// STATS
+// ============================================
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+function updateStats() {
+  const ts = sessions.filter(s => s.date === todayStr() && s.mode === 'work');
+  document.getElementById('statPomos').textContent = ts.length;
+  const totalMin = ts.reduce((sum, s) => sum + s.minutes, 0);
+  if (totalMin >= 60) {
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    document.getElementById('statTime').textContent = m > 0 ? `${h}h ${m}m` : `${h}h`;
+  } else { document.getElementById('statTime').textContent = `${totalMin}m`; }
+  document.getElementById('statTasks').textContent = tasks.filter(t => t.done).length;
+}
+
+function renderWeekBars() {
+  const container = document.getElementById('weekBars');
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const now = new Date(), dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+  monday.setHours(0,0,0,0);
+
+  const weekData = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    const ds = d.toISOString().split('T')[0];
+    weekData.push({
+      day: dayNames[i],
+      pomos: sessions.filter(s => s.date === ds && s.mode === 'work').length,
+      isToday: ds === todayStr()
+    });
+  }
+  const maxP = Math.max(...weekData.map(d => d.pomos), 1);
+  container.innerHTML = weekData.map(d => {
+    const h = d.pomos > 0 ? (d.pomos / maxP) * 60 + 4 : 4;
+    return `<div class="daily-bar-wrapper">
+      <div class="daily-bar ${d.isToday ? 'today' : ''}" style="height:${h}px"
+           title="${d.pomos} pomodoro${d.pomos !== 1 ? 's' : ''}"></div>
+      <div class="daily-label">${d.day}</div></div>`;
+  }).join('');
+}
+
+// ============================================
+// REPORTS
+// ============================================
+let reportMode = 'weekly';
+
+function setReportTab(mode) {
+  reportMode = mode;
+  document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`[data-report="${mode}"]`).classList.add('active');
+  renderReports();
+}
+
+function renderReports() {
+  const container = document.getElementById('reportSummary');
+  const now = new Date();
+  let startDate;
+  if (reportMode === 'weekly') {
+    const dow = now.getDay();
+    startDate = new Date(now);
+    startDate.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+    startDate.setHours(0,0,0,0);
+  } else { startDate = new Date(now.getFullYear(), now.getMonth(), 1); }
+
+  const startStr = startDate.toISOString().split('T')[0];
+  const filtered = sessions.filter(s => s.mode === 'work' && s.date >= startStr);
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="report-empty">No sessions this period yet</div>';
+    return;
+  }
+
+  // Group by task name and sum minutes, also track latest date per task
+  const byTask = {};
+  const latestDate = {};
+  filtered.forEach(s => {
+    byTask[s.taskName] = (byTask[s.taskName] || 0) + s.minutes;
+    if (!latestDate[s.taskName] || s.date > latestDate[s.taskName]) latestDate[s.taskName] = s.date;
+  });
+
+  let sorted = Object.entries(byTask);
+
+  // Apply sort from dropdown
+  const sortBy = document.getElementById('reportSort').value;
+  if (sortBy === 'time-desc')  sorted.sort((a, b) => b[1] - a[1]);
+  if (sortBy === 'time-asc')   sorted.sort((a, b) => a[1] - b[1]);
+  if (sortBy === 'name-asc')   sorted.sort((a, b) => a[0].localeCompare(b[0]));
+  if (sortBy === 'date-desc')  sorted.sort((a, b) => (latestDate[b[0]] || '').localeCompare(latestDate[a[0]] || ''));
+
+  const maxM = Math.max(...sorted.map(s => s[1]));
+  container.innerHTML = sorted.map(([name, mins]) => {
+    const pct = Math.round((mins / maxM) * 100);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    const ts = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+    return `<div class="report-row"><div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="report-row-label">${escapeHtml(name)}</span>
+        <span class="report-row-value">${ts}</span></div>
+      <div class="report-row-bar"><div class="report-row-fill" style="width:${pct}%"></div></div>
+    </div></div>`;
+  }).join('');
+}
+
+/** Download the current report view as a .txt file */
+function downloadReport() {
+  const now = new Date();
+  let startDate, periodLabel;
+  if (reportMode === 'weekly') {
+    const dow = now.getDay();
+    startDate = new Date(now);
+    startDate.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+    startDate.setHours(0,0,0,0);
+    periodLabel = 'WEEKLY';
+  } else {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    periodLabel = 'MONTHLY';
+  }
+
+  const startStr = startDate.toISOString().split('T')[0];
+  const filtered = sessions.filter(s => s.mode === 'work' && s.date >= startStr);
+  if (filtered.length === 0) return;
+
+  // Group by task
+  const byTask = {};
+  filtered.forEach(s => { byTask[s.taskName] = (byTask[s.taskName] || 0) + s.minutes; });
+  const sorted = Object.entries(byTask).sort((a, b) => b[1] - a[1]);
+
+  const startFmt = startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const endFmt = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  let text = `${periodLabel} REPORT — ${startFmt} to ${endFmt}\n`;
+  text += `${'='.repeat(50)}\n\n`;
+
+  const totalAllMin = filtered.reduce((sum, s) => sum + s.minutes, 0);
+  const totalSessions = filtered.length;
+
+  sorted.forEach(([ name, mins ], i) => {
+    const h = Math.floor(mins / 60), m = mins % 60;
+    const ts = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+    const sessCount = filtered.filter(s => s.taskName === name).length;
+    text += `${i + 1}. ${name}\n`;
+    text += `   Time: ${ts} | Sessions: ${sessCount}\n\n`;
+  });
+
+  text += `${'='.repeat(50)}\n`;
+  const th = Math.floor(totalAllMin / 60), tm = totalAllMin % 60;
+  text += `Total focus time: ${th > 0 ? (tm > 0 ? `${th}h ${tm}m` : `${th}h`) : `${tm}m`}\n`;
+  text += `Total sessions: ${totalSessions}\n`;
+  text += `Tasks worked on: ${sorted.length}\n`;
+
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${reportMode}-report-${now.toISOString().split('T')[0]}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================
+// SETTINGS
+// ============================================
+
+/** All dropdowns: 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60 */
+function populateSettingsForm() {
+  ['setWork', 'setShort', 'setLong'].forEach((id, idx) => {
+    const sel = document.getElementById(id);
+    const val = [durations.work, durations.short, durations.long][idx];
+    sel.innerHTML = '';
+    for (let i = 5; i <= 60; i += 5) {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = `${i} min`;
+      if (i === val) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  });
+  document.getElementById('setAlarm').value = alarmSound;
+}
+
+function openSettings() { document.getElementById('settingsOverlay').classList.add('visible'); }
+
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.remove('visible');
+  if (alarmAudio && !isAlarmRinging) {
+    if (alarmAudio._isBeep) clearInterval(alarmAudio._interval);
+    else { alarmAudio.pause(); alarmAudio.currentTime = 0; }
+    alarmAudio = null;
+  }
+}
+
+function saveSettings() {
+  durations.work  = parseInt(document.getElementById('setWork').value);
+  durations.short = parseInt(document.getElementById('setShort').value);
+  durations.long  = parseInt(document.getElementById('setLong').value);
+  alarmSound = document.getElementById('setAlarm').value;
+  if (!isRunning) { timeLeft = durations[currentMode] * 60; updateDisplay(); }
+  saveData(); closeSettings();
+}
+
+function clearAllData() {
+  if (!confirm('Permanently delete all tasks, sessions, and settings?')) return;
+  localStorage.removeItem('pomodoro_data');
+  tasks = []; nextId = 1; sessions = []; activeTaskId = null;
+  durations = { work: 35, short: 5, long: 15 }; alarmSound = 'default'; theme = 'dark';
+  applyTheme(); setMode('work'); populateSettingsForm();
+  renderTasks(); updateStats(); renderWeekBars(); renderReports();
+  updateCurrentTaskLabel(); updateFinishButton(); closeSettings();
+}
+
+// Close modal on backdrop or Escape
+document.getElementById('settingsOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+// ============================================
+// UTILITY
+// ============================================
+function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
+// ============================================
+// LAUNCH
+// ============================================
+init();
+</script>
+</body>
+</html>
